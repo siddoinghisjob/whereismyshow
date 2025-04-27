@@ -1,0 +1,25 @@
+# Source files
+*.ts
+!*.d.ts
+
+# Development files
+.vscode/
+.idea/
+.github/
+test/
+example.js
+test-module.js
+
+# Configuration files
+.gitignore
+tsconfig.json
+jest.config.js
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build process
+node_modules/
+coverage/
