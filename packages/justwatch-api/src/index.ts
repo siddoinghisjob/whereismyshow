@@ -1,15 +1,16 @@
 import FetchWithProxyFallback from "super-fetch-proxy";
 import timedFunction from "timed-function";
-import getProxyListFunc from "getactiveproxies";
+import getProxyList from "getactiveproxies";
 
-interface SearchResult {
+// Type definitions
+export interface SearchResult {
   title: string | null;
   originalReleaseYear: number | null;
   posterUrl: string;
   fullPath: string | null;
 }
 
-interface StreamerDetail {
+export interface StreamProvider {
   Resolution: string;
   Type: string;
   Price: string;
@@ -21,12 +22,22 @@ interface StreamerDetail {
   Icon: string;
 }
 
-interface StreamerResponse {
+export interface StreamingInfo {
   ID: string;
-  Streams: StreamerDetail[];
+  originalTitle?: string;
+  isReleased?: boolean;
+  releastyear?: string;
+  genres?: string[];
+  imdbScore?: string | Number;
+  imdbCount?: string | Number;
+  tmdbRating?: string | Number;
+  tomatoMeter?: string | Number;
+  productionCountries?: string[];
+  shortDescription?: string;
+  Streams: StreamProvider[];
 }
 
-interface SimilarTitle {
+export interface SimilarTitle {
   type: string;
   title: string;
   poster: string | null;
@@ -39,16 +50,14 @@ interface SimilarTitle {
   };
 }
 
+// Main class implementation
 class JustWatchAPI {
   private timeout: number;
   private fetchWithProxy: FetchWithProxyFallback;
 
   constructor(timeout?: number) {
-    this.timeout = timeout || 1400;
-    this.fetchWithProxy = new FetchWithProxyFallback(
-      getProxyListFunc as any,
-      this.timeout
-    );
+    this.timeout = timeout || 1400; // Default timeout is 1.4 seconds
+    this.fetchWithProxy = new FetchWithProxyFallback(getProxyList, timeout);
   }
 
   async searchByQuery(
@@ -147,8 +156,9 @@ class JustWatchAPI {
 
     const data = await response.json();
     const searchResults = data?.data?.popularTitles?.edges || [];
-    const searchResult: SearchResult[] = searchResults?.map((result: any) => {
-      ({
+
+    const searchResult = searchResults.map((result: any) => {
+      return {
         title: result?.node?.content?.title || null,
         originalReleaseYear: result?.node?.content?.originalReleaseYear || null,
         posterUrl: result?.node?.content?.posterUrl
@@ -157,26 +167,25 @@ class JustWatchAPI {
               .replace("{format}", "webp")}`
           : "",
         fullPath: result?.node?.content?.fullPath || null,
-      });
+      };
     });
     return searchResult;
   }
 
   async search(query: string, country: string = "IN"): Promise<SearchResult[]> {
-    const defaultResult: SearchResult[] = [];
     return timedFunction(
       this.searchByQuery.bind(this),
       this.timeout,
-      defaultResult,
+      [] as SearchResult[],
       query,
       country
     );
   }
 
-  async getStreamersByPath(
+  async getDataByPath(
     itemFullPath: string,
     country: string = "IN"
-  ): Promise<StreamerResponse> {
+  ): Promise<StreamingInfo> {
     const requestBody = {
       operationName: "GetUrlTitleDetails",
       variables: {
@@ -1464,9 +1473,26 @@ class JustWatchAPI {
 
     const fullResponseDetails = await response.json();
 
-    const streams: StreamerDetail[] =
-      fullResponseDetails?.data?.urlV2?.node?.offers?.map(
-        (listItem: any): StreamerDetail => ({
+    const nodeData = fullResponseDetails?.data?.urlV2?.node || {};
+    if (!nodeData) {
+      return { ID: "", Streams: [] };
+    }
+    return {
+      ID: nodeData?.id || "",
+      originalTitle: nodeData?.content.originalTitle,
+      releastyear: nodeData?.content.originalReleaseYear || "",
+      isReleased: nodeData?.content.isReleased || false,
+      genres:
+        nodeData?.content?.genres?.map((genre: any) => genre?.translation) ||
+        [],
+      productionCountries: nodeData?.content?.productionCountries || [],
+      shortDescription: nodeData?.content?.shortDescription || "",
+      imdbScore: nodeData?.content?.scoring?.imdbScore || "",
+      imdbCount: nodeData?.content?.scoring?.imdbVotes || "",
+      tmdbRating: nodeData?.content?.scoring?.tmdbScore || "",
+      tomatoMeter: nodeData?.content?.scoring?.tomatoMeter || "",
+      Streams:
+        nodeData?.offers?.map((listItem: any) => ({
           Resolution: listItem?.presentationType || "",
           Type: listItem?.monetizationType || "",
           Price: listItem?.retailPrice || "",
@@ -1481,24 +1507,18 @@ class JustWatchAPI {
                 "webp"
               )}`
             : "",
-        })
-      ) || [];
-
-    return {
-      ID: fullResponseDetails?.data?.urlV2?.node?.id || "",
-      Streams: streams,
+        })) || [],
     };
   }
 
-  async getStreamers(
+  async getData(
     itemFullPath: string,
     country: string = "IN"
-  ): Promise<StreamerResponse> {
-    const defaultResult: StreamerResponse = { ID: "", Streams: [] };
+  ): Promise<StreamingInfo> {
     return timedFunction(
-      this.getStreamersByPath.bind(this),
+      this.getDataByPath.bind(this),
       this.timeout,
-      defaultResult,
+      { ID: "", Streams: [] } as StreamingInfo,
       itemFullPath,
       country
     );
@@ -1535,31 +1555,29 @@ class JustWatchAPI {
     );
 
     const data = await response.json();
-    const listOfShows = data?.data?.node?.similarTitlesV2?.edges || [];
-    const finalList: SimilarTitle[] = listOfShows.map(
-      (show: any): SimilarTitle => {
-        const rawPosterUrl = show?.node?.content?.posterUrl;
-        return {
-          type: show?.node?.objectType || "",
-          title: show?.node?.content?.title || "",
-          poster: rawPosterUrl
-            ? `https://images.justwatch.com${rawPosterUrl
-                .replace("{profile}", "s332")
-                .replace("{format}", "webp")}`
-            : null,
-          fullPath: show?.node?.content?.fullPath || "",
-          genres:
-            show?.node?.content?.genres?.map(
-              (genre: any) => genre?.translation || ""
-            ) || [],
-          scoring: {
-            imdbVotes: show?.node?.content?.scoring?.imdbVotes,
-            imdbScore: show?.node?.content?.scoring?.imdbScore,
-            tomatoMeter: show?.node?.content?.scoring?.tomatoMeter,
-          },
-        };
-      }
-    );
+    const ListOfShows = data?.data?.node?.similarTitlesV2?.edges || [];
+    const finalList = ListOfShows.map((show: any) => {
+      const rawPosterUrl = show?.node?.content?.posterUrl;
+      return {
+        type: show?.node?.objectType || "",
+        title: show?.node?.content?.title || "",
+        poster: rawPosterUrl
+          ? `https://images.justwatch.com${rawPosterUrl
+              .replace("{profile}", "s332")
+              .replace("{format}", "webp")}`
+          : null,
+        fullPath: show?.node?.content?.fullPath || "",
+        genres:
+          show?.node?.content?.genres?.map(
+            (genre: any) => genre?.translation || ""
+          ) || [],
+        scoring: {
+          imdbVotes: show?.node?.content?.scoring?.imdbVotes,
+          imdbScore: show?.node?.content?.scoring?.imdbScore,
+          tomatoMeter: show?.node?.content?.scoring?.tomatoMeter,
+        },
+      };
+    });
 
     return finalList;
   }
@@ -1571,7 +1589,7 @@ class JustWatchAPI {
     return timedFunction(
       this.getSimiliarTitlesByShowID.bind(this),
       this.timeout,
-      [],
+      [] as SimilarTitle[],
       showid,
       country
     );

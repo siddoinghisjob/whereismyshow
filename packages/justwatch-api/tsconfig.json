@@ -10,6 +10,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["index.ts", "helper/**/*.ts"],
+  "include": ["src/index.ts", "helper/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "**/*.test.ts"]
 }
