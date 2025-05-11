@@ -9,7 +9,7 @@ interface MediaCardProps {
   size?: "small" | "medium" | "large";
 }
 
-export default function MediaCard({ item }: MediaCardProps) {
+export default function MediaCard({ item, size = "medium" }: MediaCardProps) {
   // Handle both SearchResult and SimilarTitle types
   const title = "title" in item ? item.title : null;
   const posterUrl =
@@ -35,20 +35,41 @@ export default function MediaCard({ item }: MediaCardProps) {
     posterUrl ? `?poster=${encodeURIComponent(posterUrl)}` : ""
   }`;
 
+  // Define size-specific classes
+  const sizeClasses = {
+    small: {
+      card: "w-36 sm:w-40",
+      poster: "h-54 w-36 sm:h-60 sm:w-40",
+      text: "text-xs",
+    },
+    medium: {
+      card: "w-48 sm:w-52",
+      poster: "h-72 w-48 sm:h-78 sm:w-52",
+      text: "text-sm",
+    },
+    large: {
+      card: "w-60",
+      poster: "h-80 w-60",
+      text: "text-sm",
+    },
+  };
+
+  const currentSize = sizeClasses[size];
+
   return (
     <Link
       href={detailsUrl}
-      className={`w-full flex flex-col items-center justify-start text-center bg-neutral-900 rounded-md p-4 transition-transform transform hover:scale-105 group`}
+      className={`flex flex-col items-center justify-start text-center bg-neutral-900 rounded-md h-full transition-transform transform hover:scale-105 group overflow-hidden ${currentSize.card}`}
     >
       {/* Poster Image */}
       <div
-        className={`relative h-80 w-60 rounded-md overflow-hidden bg-gray-800`}
+        className={`${currentSize.poster} relative rounded-md overflow-hidden bg-gray-800`}
       >
         {posterUrl ? (
           <Image
             src={posterUrl}
             alt={title || "Media poster"}
-            className = "absolute left-0 top-0 w-full h-full object-cover border-2"
+            className="p-4"
             fill
             quality={80}
           />
@@ -60,7 +81,7 @@ export default function MediaCard({ item }: MediaCardProps) {
 
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
-          <h3 className="text-white font-semibold text-sm line-clamp-2">
+          <h3 className={`text-white font-semibold ${currentSize.text} line-clamp-2`}>
             {title}
           </h3>
 
@@ -86,7 +107,7 @@ export default function MediaCard({ item }: MediaCardProps) {
       </div>
 
       {/* Title shown all the time */}
-      <p className="text-white font-medium mt-2 text-sm w-full h-full">
+      <p className={`text-white font-medium mt-2 ${currentSize.text} w-full`}>
         {title}
       </p>
 

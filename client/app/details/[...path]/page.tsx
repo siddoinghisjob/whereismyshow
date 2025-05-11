@@ -416,11 +416,11 @@ export default function MediaDetailsPage() {
           </h2>
 
           {similarTitles.length > 0 ? (
-            <div className="flex flex-wrap align-middle justify-center md:justify-start gap-4 md:gap-6">
+            <div className="flex flex-wrap align-middle justify-center md:justify-start gap-4 md:gap-6 overflow-hidden">
               {similarTitles.slice(0, 12).map((title) => (
                 <div
                   key={title.fullPath}
-                  className="transform hover:scale-105 transition duration-300"
+                  className="transform transition duration-300"
                 >
                   <MediaCard item={title} size="small" />
                 </div>

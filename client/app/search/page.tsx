@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Navigation from "../components/Navigation";
 import MediaCard from "../components/MediaCard";
@@ -8,7 +8,7 @@ import { searchShows } from "../services/apiService";
 import { SearchResult } from "../types";
 import { useCountry } from "../context/CountryContext";
 
-export default function SearchPage() {
+function Search() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -60,10 +60,10 @@ export default function SearchPage() {
 
         {/* Results grid */}
         {!isLoading && results.length > 0 && (
-          <div className="flex md:justify-start justify-center flex-wrap md:gap-4 align-middle w-full">
+          <div className="flex md:justify-start justify-center flex-wrap md:gap-6 gap-4 align-middle w-full overflow-x-hidden">
             {results?.map((result, key) => (
-              <div className="my-4 md:my-0 w-full" key={key}>
-                <MediaCard item={result} />
+              <div className="my-4 md:my-0" key={key}>
+                <MediaCard item={result} size="large" />
               </div>
             ))}
           </div>
@@ -126,5 +126,28 @@ export default function SearchPage() {
         )}
       </main>
     </>
+  );
+}
+
+export default function SearchBar() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen pt-24 pb-12 px-6 w-full">
+          <div className="mb-8">
+            <div className="h-8 w-48 bg-gray-700 rounded animate-pulse mb-3"></div>
+            <div className="h-5 w-72 bg-gray-700 rounded animate-pulse"></div>
+          </div>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+            <span className="ml-4 text-gray-400">
+              Loading search results...
+            </span>
+          </div>
+        </div>
+      }
+    >
+      <Search />
+    </Suspense>
   );
 }
